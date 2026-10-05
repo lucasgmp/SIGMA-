@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA - Gerenciar Registros</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f4f6f9; color: #333; }
+        .sidebar { width: 250px; height: 100vh; background: #0f2a2e; color: white; position: fixed; display: flex; flex-direction: column; }
+        .sidebar h2 { text-align: center; padding: 20px 0; margin: 0; border-bottom: 1px solid #1e4a50; }
+        .sidebar a { display: block; padding: 15px 20px; color: #a4c8cc; text-decoration: none; transition: 0.3s; }
+        .sidebar a:hover, .sidebar a.active { background: #1e4a50; color: white; border-left: 4px solid #27ae60; }
+
+        .main-content { margin-left: 250px; padding: 30px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+
+        /* Estilos do Formulário */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #219653; }
+
+        /* Estilos da Tabela */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f9fa; }
+        .btn-excluir { background: #e74c3c; padding: 5px 10px; font-size: 12px; }
+        .btn-excluir:hover { background: #c0392b; }
+    </style>
+</head>
+<body>
+
+<!-- Menu Lateral -->
+<div class="sidebar">
+    <h2>SIGMA</h2>
+    <a href="dashboard.html">📊 Dashboard</a>
+    <a href="monitoramento.html">🖥️ Monitoramento</a>
+    <a href="registro.html" class="active">📝 Cadastrar Registros</a>
+</div>
+
+<!-- Conteúdo Central -->
+<div class="main-content">
+
+    <!-- Formulário para Inserir no Banco -->
+    <div class="card">
+        <h2>Novo Registro</h2>
+        <form id="formRegistro" onsubmit="salvarRegistro(event)">
+            <div class="form-group">
+                <label>Número do Registro</label>
+                <input type="text" id="numeroRegistro" required placeholder="Ex: BO-2026-001">
+            </div>
+            <div class="form-group">
+                <label>Tipo de Registro</label>
+                <input type="text" id="tipoRegistro" required placeholder="Ex: Ocorrência Policial">
+            </div>
+            <div class="form-group">
+                <label>Órgão Responsável</label>
+                <input type="text" id="orgaoResponsavel" required placeholder="Ex: Polícia Militar">
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="status" required>
+                    <option value="Em Progresso">Em Progresso</option>
+                    <option value="Pendente">Pendente</option>
+                    <option value="Concluído">Concluído</option>
+                </select>
+            </div>
+            <button type="submit">Salvar no Banco de Dados</button>
+        </form>
+    </div>
+
+    <!-- Tabela Listando do Banco -->
+    <div class="card">
+        <h2>Registros Salvos</h2>
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Número</th>
+                <th>Tipo</th>
+                <th>Órgão</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+            </thead>
+            <tbody id="tabelaRegistros">
+            <!-- Os dados do banco vão aparecer aqui -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    async function salvarRegistro(event) {
+        event.preventDefault();
+
+        const payload = {
+            tipoOcorrencia: document.getElementById('tipo').value,
+            placaVeiculo: document.getElementById('placa').value,
+            cpfCondutor: document.getElementById('cpf').value,
+            localizacao: document.getElementById('local').value,
+            descricao: document.getElementById('descricao').value
+        };
+
+        try {
+            const response = await fetch('/api/registros', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Erro ao registrar');
+
+            alert(`✅ Ocorrência salva! Protocolo: ${data.protocolo}`);
+            document.getElementById('formOcorrencia').reset();
+        } catch (err) {
+            alert(`❌ Falha: ${err.message}`);
+        }
+    }
+</script>
+</body>
+</html>

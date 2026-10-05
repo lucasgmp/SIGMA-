@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA - Login</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f2a2e; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: #fff; }
+        .login-container { background-color: #1e4a50; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); width: 100%; max-width: 400px; text-align: center; }
+        h1 { margin-bottom: 10px; font-size: 28px; }
+        p { margin-bottom: 30px; font-size: 14px; color: #a4c8cc; }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; margin-bottom: 8px; font-size: 14px; }
+        input { width: 100%; padding: 12px; border: none; border-radius: 5px; box-sizing: border-box; font-size: 16px; background-color: #fff; color: #333;}
+        button { width: 100%; padding: 12px; background-color: #27ae60; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; transition: background-color 0.3s; font-weight: bold; }
+        button:hover { background-color: #219653; }
+        .error-msg { color: #ff6b6b; font-size: 14px; margin-top: 15px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>SIGMA</h1>
+        <p>Sistema Integrado de Gestão e Monitoramento</p>
+        <div class="form-group">
+            <label for="username">Usuário</label>
+            <input type="text" id="username" placeholder="Digite seu usuário">
+        </div>
+        <div class="form-group">
+            <label for="password">Senha</label>
+            <input type="password" id="password" placeholder="Digite sua senha">
+        </div>
+        <button onclick="fazerLogin()">Acessar</button>
+        <div id="error-msg" class="error-msg">Usuário ou senha inválidos.</div>
+    </div>
+
+    <script>
+        async function fazerLogin() {
+            // 1. Obtém os valores e remove espaços extras
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-msg');
+
+            errorMsg.style.display = 'none';
+
+            if (!user || !pass) {
+                errorMsg.textContent = "Preencha o utilizador e a senha.";
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            try {
+                // 2. Envia os dados para o Spring Boot
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ login: user, password: pass })
+                });
+
+                const dados = await response.json();
+                console.log("Resposta do Java:", dados);
+
+                if (!response.ok) {
+                    throw new Error(dados.mensagem || "Utilizador ou senha incorretos.");
+                }
+
+                // 3. Redirecionamento com base no perfil retornado
+                if (dados.perfil === 'ADMIN') {
+                    window.location.href = '/dashboard.html';
+                } else if (dados.perfil === 'USUARIO') {
+                    window.location.href = '/DashboardUsuario.html';
+                } else {
+                    throw new Error("Perfil de acesso não reconhecido.");
+                }
+
+            } catch (error) {
+                errorMsg.textContent = error.message;
+                errorMsg.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>

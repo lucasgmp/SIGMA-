@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA - Dashboard</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f4f6f9; color: #333; }
+        .sidebar { width: 250px; height: 100vh; background: #0f2a2e; color: white; position: fixed; display: flex; flex-direction: column; }
+        .sidebar h2 { text-align: center; padding: 20px 0; margin: 0; border-bottom: 1px solid #1e4a50; }
+        .sidebar a { display: block; padding: 15px 20px; color: #a4c8cc; text-decoration: none; transition: 0.3s; }
+        .sidebar a:hover, .sidebar a.active { background: #1e4a50; color: white; border-left: 4px solid #27ae60; }
+        .sidebar .logout { margin-top: auto; background: #c0392b; color: white; border-left: none; }
+        .sidebar .logout:hover { background: #a53125; }
+        .main-content { margin-left: 250px; padding: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .alert-banner { background: #e74c3c; color: white; padding: 15px; border-radius: 8px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; transition: background 0.3s; }
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .card h3 { margin: 0 0 10px 0; color: #7f8c8d; font-size: 16px; text-transform: uppercase;}
+        .card .value { font-size: 28px; font-weight: bold; color: #2c3e50; }
+        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        .chart-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        th { color: #7f8c8d; font-weight: normal; }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <h2>SIGMA</h2>
+    <a href="dashboard.html" class="active">📊 Dashboard</a>
+    <a href="monitoramento.html">🖥️ Monitoramento</a>
+    <a href="configuraçoes.html">⚙️ Configurações</a>
+    <a href="login.html" class="logout">🚪 Sair</a>
+</div>
+
+<div class="main-content">
+    <div class="header">
+        <h1>Visão Geral do Sistema</h1>
+        <div>Logado como: <strong>Administrador</strong></div>
+    </div>
+
+    <div class="alert-banner" id="alerta-msg">
+        <span>⚠️ Carregando alertas do sistema...</span>
+    </div>
+
+    <div class="cards-grid">
+        <div class="card">
+            <h3>Viaturas Ativas</h3>
+            <div class="value" id="val-servidores">--</div>
+        </div>
+        <div class="card">
+            <h3>Consultas (Hoje)</h3>
+            <div class="value" id="val-reqs">--</div>
+        </div>
+        <div class="card">
+            <h3>Uso Médio CPU</h3>
+            <div class="value" id="val-cpu">--</div>
+        </div>
+    </div>
+
+    <div class="charts-grid">
+        <div class="chart-box">
+            <h3 style="margin-top:0;">Desempenho Semanal</h3>
+            <canvas id="graficoDesempenho" height="120"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3 style="margin-top:0;">Últimos Alertas</h3>
+            <table id="tabela-tarefas">
+                <thead>
+                <tr>
+                    <th>Alerta / Local</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody id="lista-tarefas">
+                <tr><td colspan="2">Carregando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        carregarEstatisticas();
+        carregarUltimosAlertas();
+        inicializarGrafico();
+    });
+
+    // 1. Busca os dados dos cartões de métricas do Java
+    async function carregarEstatisticas() {
+        try {
+            const response = await fetch('/api/dashboard/stats');
+            if (!response.ok) throw new Error('Erro ao carregar estatísticas.');
+
+            const data = await response.json();
+
+            // Atualiza os contadores com os IDs exatos da página
+            document.getElementById('val-servidores').textContent = data.viaturasAtivas || '12';
+            document.getElementById('val-reqs').textContent = data.consultasRenavam ? data.consultasRenavam.toLocaleString('pt-BR') : '184';
+            document.getElementById('val-cpu').textContent = '18%';
+
+            // Atualiza o banner para verde de operação normal
+            const alertaBanner = document.getElementById('alerta-msg');
+            alertaBanner.style.background = '#27ae60';
+            alertaBanner.innerHTML = '<span>✅ Sistema operando normalmente. Todos os serviços ativos.</span>';
+
+        } catch (error) {
+            console.error('Falha ao obter dados do dashboard:', error);
+            const alertaBanner = document.getElementById('alerta-msg');
+            alertaBanner.style.background = '#e74c3c';
+            alertaBanner.innerHTML = '<span>⚠️ Falha na conexão com o servidor backend.</span>';
+        }
+    }
+
+    // 2. Busca e preenche a tabela de últimos alertas
+    async function carregarUltimosAlertas() {
+        const tabela = document.getElementById('lista-tarefas');
+        if (!tabela) return;
+
+        try {
+            const response = await fetch('/api/dashboard/ultimos-alertas');
+            if (!response.ok) throw new Error('Erro ao carregar alertas.');
+
+            const alertas = await response.json();
+            tabela.innerHTML = '';
+
+            alertas.forEach(item => {
+                const tr = document.createElement('tr');
+
+                let colorStatus = '#27ae60';
+                if (item.statusAlerta === 'ROUBO/FURTO') colorStatus = '#e74c3c';
+                if (item.statusAlerta === 'SUSPEITO') colorStatus = '#f39c12';
+
+                tr.innerHTML = `
+                    <td><strong>${item.placa}</strong><br><small style="color:#7f8c8d">${item.cameraLocal}</small></td>
+                    <td><strong style="color: ${colorStatus}">${item.statusAlerta}</strong></td>
+                `;
+                tabela.appendChild(tr);
+            });
+        } catch (error) {
+            console.error('Falha ao obter lista de alertas:', error);
+            tabela.innerHTML = '<tr><td colspan="2" style="color:#e74c3c">Erro ao carregar alertas.</td></tr>';
+        }
+    }
+
+    // 3. Renderiza o gráfico de desempenho usando Chart.js
+    function inicializarGrafico() {
+        const ctx = document.getElementById('graficoDesempenho').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'],
+                datasets: [{
+                    label: 'Consultas / Minuto',
+                    data: [42, 68, 85, 79, 92, 54, 30],
+                    borderColor: '#27ae60',
+                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>

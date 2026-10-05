@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>SIGMA - Monitoramento LPR</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #0f2a2e; color: #fff; }
+        .container { padding: 30px; margin-left: 250px; }
+        .sidebar { width: 250px; height: 100vh; background: #07171a; position: fixed; }
+        .sidebar a { display: block; padding: 15px 20px; color: #a4c8cc; text-decoration: none; }
+        .sidebar a.active { background: #1e4a50; color: #fff; border-left: 4px solid #27ae60; }
+        .search-box { background: #1e4a50; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border-radius: 5px; border: none; font-size: 16px; }
+        button { padding: 12px 25px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .result-panel { background: #1a3c40; padding: 20px; border-radius: 8px; margin-bottom: 25px; display: none; }
+        table { width: 100%; border-collapse: collapse; background: #163235; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #1e4a50; }
+        th { background: #0d2124; color: #a4c8cc; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+        .badge-danger { background: #e74c3c; color: white; }
+        .badge-warning { background: #f39c12; color: white; }
+        .badge-success { background: #27ae60; color: white; }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <h2 style="text-align: center; color: #fff;">SIGMA</h2>
+    <a href="dashboard.html">📊 Dashboard</a>
+    <a href="monitoramento.html" class="active">🖥️ Monitoramento</a>
+    <a href="registro.html">📝 Registros</a>
+    <a href="login.html">🚪 Sair</a>
+</div>
+
+<div class="container">
+    <h1>Monitoramento de Câmeras (LPR) em Tempo Real</h1>
+
+    <!-- Busca por Placa -->
+    <div class="search-box">
+        <input type="text" id="inputPlaca" placeholder="Digite a placa para consultar no RENAVAM (Ex: ABC-1D23, XYZ-9876)...">
+        <button onclick="buscarPlaca()">Consultar RENAVAM</button>
+    </div>
+
+    <div id="painelResultado" class="result-panel">
+        <h3>Resultado da Consulta RENAVAM</h3>
+        <p><strong>Placa:</strong> <span id="resPlaca"></span> | <strong>Modelo:</strong> <span id="resModelo"></span></p>
+        <p><strong>Proprietário:</strong> <span id="resProprietario"></span> | <strong>Status:</strong> <span id="resStatus"></span></p>
+    </div>
+
+    <!-- Feed Dinâmico de Leituras de Câmeras -->
+    <h2>Feed de Leituras das Câmeras <small style="font-size: 14px; color: #27ae60;">● Ao Vivo (Atualizando a cada 5s)</small></h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Placa Detectada</th>
+            <th>Local da Câmera</th>
+            <th>Horário</th>
+            <th>Alerta / Situação</th>
+        </tr>
+        </thead>
+        <tbody id="tabelaFeed">
+        <tr><td colspan="4">Conectando ao sistema de câmeras...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        atualizarFeed();
+        setInterval(atualizarFeed, 5000); // Atualiza o feed a cada 5 segundos automaticamente
+    });
+
+    async function buscarPlaca() {
+        const placa = document.getElementById('inputPlaca').value.trim();
+        if (!placa) return alert('Informe uma placa!');
+
+        try {
+            const response = await fetch(`/api/renavam/${placa}`);
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.message || 'Placa não encontrada');
+
+            document.getElementById('resPlaca').textContent = data.placa();
+            document.getElementById('resModelo').textContent = data.marcaModelo() + ' (' + data.cor() + ')';
+            document.getElementById('resProprietario').textContent = data.proprietario();
+            document.getElementById('resStatus').textContent = data.status();
+            document.getElementById('painelResultado').style.display = 'block';
+        } catch (err) {
+            alert(err.message);
+            document.getElementById('painelResultado').style.display = 'none';
+        }
+    }
+
+    async function atualizarFeed() {
+        try {
+            const response = await fetch('/api/monitoramento/feed-tempo-real');
+            const feed = await response.json();
+
+            const tabela = document.getElementById('tabelaFeed');
+            tabela.innerHTML = '';
+
+            feed.forEach(item => {
+                const tr = document.createElement('tr');
+                let badgeClass = 'badge-success';
+                if (item.statusAlerta() === 'ROUBO/FURTO' || item.statusAlerta() === 'CLONAGEM SUSPEITA') badgeClass = 'badge-danger';
+                if (item.statusAlerta() === 'SUSPEITO') badgeClass = 'badge-warning';
+
+                tr.innerHTML = `
+                    <td><strong>${item.placa()}</strong></td>
+                    <td>${item.cameraLocal()}</td>
+                    <td>${item.dataHora()}</td>
+                    <td><span class="badge ${badgeClass}">${item.statusAlerta()}</span></td>
+                `;
+                tabela.appendChild(tr);
+            });
+        } catch (err) {
+            console.error("Erro no feed:", err);
+        }
+    }
+</script>
+</body>
+</html>

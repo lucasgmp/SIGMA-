@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGMA - Painel do Usuário</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #f4f6f9; color: #333; }
+
+
+        .sidebar { width: 250px; height: 100vh; background: #0f2a2e; color: white; position: fixed; display: flex; flex-direction: column; }
+        .sidebar h2 { text-align: center; padding: 20px 0; margin: 0; border-bottom: 1px solid #1e4a50; }
+        .sidebar a { display: block; padding: 15px 20px; color: #a4c8cc; text-decoration: none; transition: 0.3s; }
+        .sidebar a:hover, .sidebar a.active { background: #1e4a50; color: white; border-left: 4px solid #27ae60; }
+        .sidebar .logout { margin-top: auto; background: #c0392b; color: white; border-left: none; }
+
+        .main-content { margin-left: 250px; padding: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+
+
+        .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-top: 4px solid #2980b9; }
+        .card h3 { margin: 0 0 10px 0; color: #7f8c8d; font-size: 16px; }
+        .card .value { font-size: 28px; font-weight: bold; color: #2c3e50; }
+
+
+        .welcome-banner { background: white; border-left: 5px solid #27ae60; padding: 20px; border-radius: 8px; margin-bottom: 25px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .welcome-banner h2 { margin: 0 0 5px 0; color: #2c3e50; }
+        .welcome-banner p { margin: 0; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>SIGMA</h2>
+    <a href="DashboardUsuario.html" class="active">🏠 Meu Painel</a>
+    <a href="registro.html">📝 Novo Registro</a>
+    <a href="#">🔍 Consultar Placa (Renavam)</a>
+    <a href="login.html" class="logout">🚪 Sair</a>
+</div>
+
+<div class="main-content">
+    <div class="header">
+        <h1>Área de Trabalho</h1>
+        <div>Logado como: <strong>Oficial (Padrão)</strong></div>
+    </div>
+    <div class="welcome-banner">
+        <h2>Bom dia! O seu turno foi iniciado.</h2>
+        <p>Utilize o menu lateral para iniciar novos registros de ocorrência ou fazer consultas rápidas no sistema.</p>
+    </div>
+    <div class="cards-grid">
+        <div class="card">
+            <h3>Meus Registros (Hoje)</h3>
+            <div class="value">03</div>
+        </div>
+        <div class="card" style="border-top-color: #f39c12;">
+            <h3>Registros Pendentes</h3>
+            <div class="value">01</div>
+        </div>
+        <div class="card" style="border-top-color: #27ae60;">
+            <h3>Status do Sistema</h3>
+            <div class="value" style="color: #27ae60; font-size: 20px; margin-top: 5px;">✅ Operacional</div>
+        </div>
+    </div>
+    <button onclick="exportarRelatorioCSV()" style="background: #2980b9; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer;">
+        📄 Exportar Relatório de Alertas (CSV)
+    </button>
+    <script>
+        async function exportarRelatorioCSV() {
+            try {
+                const response = await fetch('/api/dashboard/ultimos-alertas');
+                const dados = await response.json();
+
+                let csvContent = "data:text/csv;charset=utf-8,ID,PLACA,LOCAL_CAMERA,DATA_HORA,SITUACAO\n";
+
+                dados.forEach(row => {
+                    csvContent += `${row.id()},${row.placa()},${row.cameraLocal()},${row.dataHora()},${row.statusAlerta()}\n`;
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `Relatorio_SIGMA_${new Date().toISOString().slice(0,10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+            } catch (error) {
+                alert("Erro ao gerar relatório CSV.");
+            }
+        }
+    </script>
+</div>
+</body>
+</html>
